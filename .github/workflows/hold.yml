@@ -1,3 +1,4 @@
+# D37 verification: escalation must disable auto-merge (PR will be closed)
 name: hold
 # Owner override: labelling a PR `hold` turns auto-merge off immediately (the reviewer also refuses
 # to approve while it is set). Remove the label and re-enable auto-merge (or merge) by hand.
