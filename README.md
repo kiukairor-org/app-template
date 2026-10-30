@@ -5,7 +5,7 @@ GitHub issue → Claude PR → CI → independent review → auto-merge → Argo
 
 | Path | What |
 |---|---|
-| `main.go`, `main_test.go` | minimal Go service (`GET /`, `GET /healthz`) |
+| `main.go`, `main_test.go` | minimal Go service (`GET /`, `GET /healthz`, `GET /version`). **Keep `/version`**: the catcher reads it in-cluster to announce "preview ready" (PR head SHA) and "deployed" (merge SHA). |
 | `Dockerfile` | arm64 image (distroless, non-root) |
 | `deploy/` | kustomize base; Argo CD sets namespace, image tag (= commit SHA) and tailnet hostname |
 | `CLAUDE.md` | rules for the author agent |
