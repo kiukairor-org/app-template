@@ -66,6 +66,7 @@ jobs:
           PR: ${{ steps.pr.outputs.number }}
           AUTO_MERGE_ENABLED: ${{ vars.AUTO_MERGE_ENABLED }}
           MAX_CHANGED_LINES: ${{ vars.REVIEW_MAX_CHANGED_LINES || '400' }}
+          V1_MAX_CHANGED_LINES: ${{ vars.REVIEW_V1_MAX_CHANGED_LINES || '2000' }}
         run: bash .github/scripts/review-gate.sh
 
       # Disabling auto-merge needs Contents write (like hold.yml); mint it only when escalating,

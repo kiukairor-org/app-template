@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Escalation gate for the reviewer, enforced in code BEFORE Claude runs.
 # Runs from the default branch (workflow_run), never from PR code. Reads the PR via the API only.
-# Env: GH_TOKEN, GH_REPO, PR, HEAD_SHA, AUTO_MERGE_ENABLED, MAX_CHANGED_LINES (default 400).
+# Env: GH_TOKEN, GH_REPO, PR, HEAD_SHA, AUTO_MERGE_ENABLED, MAX_CHANGED_LINES (default 400),
+#      V1_MAX_CHANGED_LINES (default 2000, only for the first Build v1 PR of a new app, D69).
 # Writes `escalate=true|false` and `reason=...` to $GITHUB_OUTPUT.
 set -euo pipefail
 MAX="${MAX_CHANGED_LINES:-400}"
@@ -19,7 +20,24 @@ changed=$(jq -r '.additions + .deletions' <<<"$pr_json")
 [ "${AUTO_MERGE_ENABLED:-}" = "true" ] || reasons+=("kill switch: org variable AUTO_MERGE_ENABLED is not 'true'")
 case ",$labels," in *,hold,*) reasons+=("label 'hold' is set") ;; esac
 case ",$labels," in *,fix-round-2,*) reasons+=("the PR has already used its 2 fix rounds") ;; esac
-[ "$changed" -le "$MAX" ] || reasons+=("diff is $changed changed lines (> $MAX)")
+# Build v1 of a NEW app (D69): the size limit is V1_MAX instead of MAX when ALL of these hold:
+#  - the PR carries `build-v1` (copied by claude.yml from the issue the catcher created with a new repo),
+#  - it was opened by the author agent (kiu-homie-bot[bot]),
+#  - the repo has never merged a PR (so only the first build of a fresh repo; a label added later is useless).
+# Every other rule below (and above) is unchanged; the reviewer still reviews the whole diff.
+limit_note=""
+author=$(jq -r .user.login <<<"$pr_json")
+if [[ ",$labels," == *,build-v1,* ]] && [ "$author" = "kiu-homie-bot[bot]" ]; then
+  merged=$(gh api "repos/$GH_REPO/pulls?state=closed&per_page=100" --jq '[.[] | select(.merged_at != null)] | length')
+  if [ "$merged" = 0 ]; then
+    MAX="${V1_MAX_CHANGED_LINES:-2000}"
+    limit_note=", Build v1 limit"
+    echo "first Build v1 PR of a new app: size limit $MAX"
+  else
+    echo "build-v1 label ignored: the repo already has $merged merged PR(s)"
+  fi
+fi
+[ "$changed" -le "$MAX" ] || reasons+=("diff is $changed changed lines (> $MAX$limit_note)")
 
 # Sensitive paths: CI/workflows, ownership, agent instructions, secrets/RBAC/permissions in deploy/.
 files=$(gh api --paginate "repos/$GH_REPO/pulls/$PR/files" --jq '.[].filename')
