@@ -102,6 +102,11 @@ jobs:
             pr=${url##*/}
           fi
           gh pr edit "$pr" --add-label agent
+          # Build v1 of a new app (D69): carry the catcher's `build-v1` issue label to the PR. review-gate.sh
+          # only honours it on the first PR of a repo with no merged PR.
+          if gh issue view "$ISSUE" --json labels --jq '.labels[].name' | grep -qx build-v1; then
+            gh pr edit "$pr" --add-label build-v1
+          fi
           # Per-PR preview (Argo CD PR generator, label `preview`): at most 2 concurrent per repo.
           previews=$(gh pr list --state open --label preview --json number --jq 'length')
           if [ "$previews" -lt 2 ]; then gh pr edit "$pr" --add-label preview; fi
