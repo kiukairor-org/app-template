@@ -39,8 +39,10 @@ Rules (the reviewer checks them):
 - **Hard timeouts:** `context.WithTimeout` on every call: 5 s for anything a user waits on (in practice only
   trivial calls fit), at most 60 s for background enrichment. On timeout, error or invalid output, keep the
   plain behaviour and log it. No retries in a loop; at most one retry for background work.
+- **ALWAYS send `"think": false` and a `num_predict` cap.** Both models reason by default: without
+  `"think": false` one request generated 1,000+ hidden tokens and took 3.5 minutes with an empty answer.
 - **Keep answers tiny:** ask for compact JSON with short keys, set `"format"` (a JSON schema),
-  `"think": false`, `"stream": false`, `"options": {"temperature": 0, "num_predict": <small cap>}`, and
+  `"stream": false`, `"options": {"temperature": 0, "num_predict": <small cap, e.g. 200>}`, and
   `"keep_alive": -1`. Output tokens dominate latency.
 - **Validate everything:** parse the JSON and check it against what you expect; the model's output is
   untrusted input. Never let it trigger actions (deletes, messages, payments), only suggestions.
