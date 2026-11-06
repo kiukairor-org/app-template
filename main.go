@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -44,8 +45,9 @@ func main() {
 	if p := os.Getenv("PORT"); p != "" {
 		addr = ":" + p
 	}
-	tr := setupTracing() // OTLP traces to $OTEL_EXPORTER_OTLP_ENDPOINT (see telemetry.go)
-	srv := &http.Server{Addr: addr, Handler: tr.middleware(newMux()), ReadHeaderTimeout: 5 * time.Second}
+	shutdown := setupTelemetry(context.Background()) // OTLP traces + metrics to $OTEL_EXPORTER_OTLP_ENDPOINT (telemetry.go)
+	defer shutdown(context.Background())
+	srv := &http.Server{Addr: addr, Handler: serverHandler(newMux()), ReadHeaderTimeout: 5 * time.Second}
 	log.Printf("%s %s listening on %s", appName(), version, addr)
 	log.Fatal(srv.ListenAndServe())
 }

@@ -6,7 +6,8 @@ GitHub issue → Claude PR → CI → independent review → auto-merge → Argo
 | Path | What |
 |---|---|
 | `main.go`, `main_test.go` | minimal Go service (`GET /`, `GET /healthz`, `GET /version`). **Keep `/version`**: the catcher reads it in-cluster to announce "preview ready" (PR head SHA) and "deployed" (merge SHA). |
-| `telemetry.go` | stdlib OTLP/HTTP JSON traces (one server span per request, 5xx = error) to `$OTEL_EXPORTER_OTLP_ENDPOINT`, the in-cluster OpenTelemetry Collector that forwards to New Relic. No key in the app. **Keep it.** |
+| `telemetry.go` | OpenTelemetry Go SDK (D81): `otelhttp` server spans + the semconv metric `http.server.request.duration` (New Relic's golden metrics are computed from it), `instrumentedClient` for every outbound call (client spans + `http.client.request.duration`), Go runtime metrics; OTLP to `$OTEL_EXPORTER_OTLP_ENDPOINT`, the in-cluster OpenTelemetry Collector that forwards to New Relic. No key in the app. **Keep it.** |
+| `browser.go` | New Relic Browser (RUM): injects the snippet from `$NEW_RELIC_BROWSER_SNIPPET_FILE` (ConfigMap `newrelic-browser`, optional) into HTML served with `servePage`. |
 | `Dockerfile` | arm64 image (distroless, non-root) |
 | `deploy/` | kustomize base; Argo CD sets namespace, image tag (= commit SHA) and tailnet hostname |
 | `CLAUDE.md` | rules for the author agent |
