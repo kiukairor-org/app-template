@@ -10,17 +10,24 @@ spec:
     spec:
       securityContext: {runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}
       automountServiceAccountToken: false
+      volumes:
+        # D81: New Relic Browser (RUM) snippet. Add a ConfigMap `newrelic-browser` (key snippet.html) to enable RUM for
+        # this app (one NR browser app per app); without it the volume is skipped and pages carry no agent.
+        - name: newrelic-browser
+          configMap: {name: newrelic-browser, optional: true}
       containers:
         - name: app
           image: ghcr.io/kiukairor-org/app-template:latest   # overridden by Argo CD
           ports: [{name: http, containerPort: 8080}]
           env:
             - {name: APP_NAME, value: app}                   # overridden by Argo CD
-            # Traces go to the in-cluster OpenTelemetry Collector (homelab-gitops apps/observability), no key here.
+            # Traces + metrics (OTel SDK, D81) go to the in-cluster OpenTelemetry Collector (homelab-gitops apps/observability), no key here.
             - {name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://otel-collector.observability.svc.cluster.local:4318"}
+            - {name: NEW_RELIC_BROWSER_SNIPPET_FILE, value: /etc/newrelic/snippet.html}
           resources:
-            requests: {cpu: 10m, memory: 16Mi}
-            limits: {memory: 64Mi}
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {memory: 128Mi}   # D81: OpenTelemetry SDK buffers (was 64Mi)
+          volumeMounts: [{name: newrelic-browser, mountPath: /etc/newrelic, readOnly: true}]
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
